@@ -473,8 +473,81 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
         <div class="card"><table class="tbl"><thead><tr><th>Operador</th><th>Tipo servicio</th><th>Tarifa</th><th>Unidad</th><th></th></tr></thead>
         <tbody id="tbody-tarifas"></tbody></table></div>
       </div>
-    </div>
 
+      <!-- CARGA MASIVA -->
+      <div class="csec" id="c-carga">
+        <div class="form-card">
+          <div class="section-divider">Paso 1 — Descarga la plantilla</div>
+          <p style="font-size:11px;color:var(--gris3);margin-bottom:10px">Descarga la plantilla con los encabezados correctos, completa los datos y súbela en el Paso 2.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="descargarPlantilla('HOMEQ')"><i class="ti ti-download"></i> Plantilla Cuadrillas</button>
+            <button class="btn" onclick="abrirPlantillaAsistencia()"><i class="ti ti-download"></i> Plantilla Asistencia</button>
+            <button class="btn" onclick="descargarPlantilla('BACKLOG')"><i class="ti ti-download"></i> Plantilla Backlog</button>
+            <button class="btn" onclick="descargarPlantilla('REQUERIMIENTO')"><i class="ti ti-download"></i> Plantilla Requerimientos</button>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="section-divider">Paso 2 — Sube el archivo completado</div>
+          <div class="fg2" style="margin-bottom:10px">
+            <div class="ff">
+              <label>Hoja destino</label>
+              <select id="carga-hoja">
+                <option value="HOMEQ">Cuadrillas (HOMEQ)</option>
+                <option value="BACKLOG">Backlog</option>
+                <option value="ASISTENCIA">Asistencia</option>
+                <option value="REQUERIMIENTO">Requerimientos</option>
+              </select>
+            </div>
+            <div class="ff">
+              <label>Modo de carga</label>
+              <select id="carga-modo">
+                <option value="append">Agregar filas nuevas</option>
+                <option value="replace">Reemplazar todo el contenido</option>
+              </select>
+            </div>
+          </div>
+          <div id="carga-dropzone"
+            style="border:2px dashed var(--gris2);border-radius:var(--radius-lg);padding:30px;text-align:center;cursor:pointer;background:var(--gris0)"
+            onclick="document.getElementById('carga-file').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--verde)';this.style.background='var(--verdeclaro)'"
+            ondragleave="this.style.borderColor='var(--gris2)';this.style.background='var(--gris0)'"
+            ondrop="handleDrop(event)">
+            <i class="ti ti-file-spreadsheet" style="font-size:32px;color:var(--gris2)"></i>
+            <div style="font-size:12px;font-weight:500;color:var(--gris3);margin-top:8px">Arrastra tu archivo CSV aquí</div>
+            <div style="font-size:10px;color:var(--gris3);margin-top:4px">o haz clic para seleccionar · Formato: .csv</div>
+            <input type="file" id="carga-file" accept=".csv" style="display:none" onchange="handleFileSelect(this)">
+          </div>
+          <div id="carga-preview" style="display:none;margin-top:12px">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--verdeclaro);border-radius:var(--radius);margin-bottom:10px">
+              <i class="ti ti-file-check" style="color:var(--verde);font-size:18px"></i>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--verde)" id="carga-filename">archivo.csv</div>
+                <div style="font-size:10px;color:var(--verde)" id="carga-fileinfo">0 filas detectadas</div>
+              </div>
+              <button class="btn btn-sm" style="margin-left:auto" onclick="limpiarCarga()">Cambiar</button>
+            </div>
+            <div style="max-height:160px;overflow-y:auto;border:1px solid var(--gris1);border-radius:var(--radius);margin-bottom:10px">
+              <table class="tbl"><thead id="carga-preview-head"></thead><tbody id="carga-preview-body"></tbody></table>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn" onclick="limpiarCarga()">Cancelar</button>
+              <button class="btn btn-primary" onclick="ejecutarCarga()"><i class="ti ti-upload"></i> Cargar al sistema</button>
+            </div>
+          </div>
+          <div id="carga-progress" style="display:none;margin-top:12px">
+            <div style="font-size:11px;font-weight:500;margin-bottom:6px" id="carga-progress-lbl">Cargando...</div>
+            <div style="height:6px;background:var(--gris1);border-radius:10px;overflow:hidden">
+              <div id="carga-progress-bar" style="height:100%;background:var(--verde);border-radius:10px;width:0%;transition:width .3s"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="carga-log-card" style="display:none">
+          <div class="card-header"><div class="card-title">Resultado de la carga</div></div>
+          <div id="carga-log" style="padding:12px 14px;font-size:11px;max-height:200px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -1833,6 +1906,118 @@ function generarPlantillaAsistencia(){
 
   cerrarModal('modal-asist-plantilla');
   showToast(`✅ Plantilla descargada — ${rows.length-2} filas`);
+}
+
+
+// ============================================================
+// CARGA MASIVA — funciones completas
+// ============================================================
+var _cargaData = null;
+
+function parsearCSV(text, filename) {
+  var lines = text.split(/\r?\n/).filter(function(l){ return l.trim(); });
+  if (lines.length < 2) { showToast('El archivo está vacío'); return; }
+  function parseRow(line) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; }
+      else if (line[i] === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else { cur += line[i]; }
+    }
+    result.push(cur.trim());
+    return result;
+  }
+  var headers = parseRow(lines[0]);
+  var rows = lines.slice(1).map(parseRow).filter(function(r){ return r.some(function(c){ return c; }); });
+  mostrarPreview(filename, headers, rows);
+}
+
+function mostrarPreview(filename, headers, rows) {
+  _cargaData = { headers: headers, rows: rows };
+  document.getElementById('carga-filename').textContent = filename;
+  document.getElementById('carga-fileinfo').textContent = rows.length + ' filas · ' + headers.length + ' columnas';
+  document.getElementById('carga-preview-head').innerHTML = '<tr>' + headers.map(function(h){ return '<th>'+h+'</th>'; }).join('') + '</tr>';
+  document.getElementById('carga-preview-body').innerHTML = rows.slice(0,5).map(function(r){
+    return '<tr>' + r.map(function(c){ return '<td style="white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">'+c+'</td>'; }).join('') + '</tr>';
+  }).join('');
+  document.getElementById('carga-dropzone').style.display = 'none';
+  document.getElementById('carga-preview').style.display = 'block';
+}
+
+function limpiarCarga() {
+  _cargaData = null;
+  var fi = document.getElementById('carga-file');
+  if (fi) fi.value = '';
+  document.getElementById('carga-dropzone').style.display = 'block';
+  document.getElementById('carga-preview').style.display = 'none';
+  document.getElementById('carga-progress').style.display = 'none';
+  document.getElementById('carga-log-card').style.display = 'none';
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('carga-dropzone').style.borderColor = 'var(--gris2)';
+  document.getElementById('carga-dropzone').style.background = 'var(--gris0)';
+  var file = e.dataTransfer.files[0];
+  if (file) procesarArchivo(file);
+}
+
+function handleFileSelect(input) {
+  var file = input.files[0];
+  if (file) procesarArchivo(file);
+}
+
+function procesarArchivo(file) {
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    var reader = new FileReader();
+    reader.onload = function(e) { parsearCSV(e.target.result, file.name); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    showToast('Solo archivos .csv — en Excel: Guardar como → CSV UTF-8');
+  }
+}
+
+async function ejecutarCarga() {
+  if (!_cargaData || !_cargaData.rows.length) { showToast('Sin datos para cargar'); return; }
+  var hoja = document.getElementById('carga-hoja').value;
+  var modo = document.getElementById('carga-modo').value;
+  var rows = _cargaData.rows;
+  var BATCH = 50;
+  var total = rows.length;
+  var cargadas = 0, errores = 0;
+  var log = [];
+
+  document.getElementById('carga-preview').style.display = 'none';
+  document.getElementById('carga-progress').style.display = 'block';
+  document.getElementById('carga-log-card').style.display = 'none';
+
+  if (modo === 'replace') {
+    try {
+      await wPost({accion:'limpiar_hoja', contrata:CONTRATA, hoja:hoja});
+      log.push('Contenido anterior eliminado');
+    } catch(e) { log.push('No se pudo limpiar: ' + e.message); }
+  }
+
+  for (var i = 0; i < rows.length; i += BATCH) {
+    var lote = rows.slice(i, i + BATCH);
+    var pct = Math.round(((i + lote.length) / total) * 100);
+    document.getElementById('carga-progress-lbl').textContent = 'Cargando... ' + (i+lote.length) + ' de ' + total + ' (' + pct + '%)';
+    document.getElementById('carga-progress-bar').style.width = pct + '%';
+    try {
+      var res = await wPost({accion:'append', contrata:CONTRATA, hoja:hoja, rows:lote});
+      if (res && res.ok) { cargadas += lote.length; log.push('Lote ' + (Math.floor(i/BATCH)+1) + ': ' + lote.length + ' filas OK'); }
+      else { errores += lote.length; log.push('Error lote ' + (Math.floor(i/BATCH)+1) + ': ' + (res && res.error ? res.error : 'desconocido')); }
+    } catch(e) { errores += lote.length; log.push('Error conexión: ' + e.message); }
+    await new Promise(function(r){ setTimeout(r, 300); });
+  }
+
+  document.getElementById('carga-progress-lbl').textContent = 'Completado: ' + cargadas + ' filas cargadas';
+  document.getElementById('carga-progress-bar').style.width = '100%';
+  document.getElementById('carga-log-card').style.display = 'block';
+  document.getElementById('carga-log').innerHTML = log.map(function(l){ return '<div style="padding:3px 0;border-bottom:1px solid var(--gris1)">' + l + '</div>'; }).join('');
+
+  if (cargadas > 0) { showToast(cargadas + ' filas cargadas en ' + hoja); await recargarTodo(); }
 }
 
 </script>
