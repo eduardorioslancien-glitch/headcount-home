@@ -153,11 +153,11 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
     <div class="logo-hc">HEADCOUNT</div>
     <div class="logo-co">HOME</div>
   </div>
-  <div class="sec-lbl">Principal</div>
+  <div class="sec-lbl">RED ACTIVA</div>
   <div class="nav active" onclick="go('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
   <div class="nav" onclick="go('cuadrillas',this)"><i class="ti ti-users"></i> Cuadrillas</div>
   <div class="nav" onclick="go('asistencia',this)"><i class="ti ti-calendar-check"></i> Asistencia</div>
-  <div class="sec-lbl">Gestión</div>
+  <div class="sec-lbl">GESTIÓN DE RED</div>
   <div class="nav" onclick="go('requerimiento',this)"><i class="ti ti-file-plus"></i> Requerimientos</div>
   <div class="nav" onclick="go('candidatos',this)"><i class="ti ti-user-check"></i> Candidatos PT</div>
   <div class="nav" onclick="go('backlog',this)"><i class="ti ti-list-check"></i> Backlog <span class="nbadge" id="badge-backlog">–</span></div>
@@ -267,7 +267,7 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
         </div>
         <div style="padding:14px">
           <div class="fg">
-            <div class="ff"><label>Operador</label><select id="r-op"></select></div>
+            <div class="ff"><label>Operador</label><select id="r-op" onchange="updZonasReq()"></select></div>
             <div class="ff"><label>Zona</label><select id="r-zona" onchange="updDist()"><option value="">— seleccionar —</option></select></div>
             <div class="ff"><label>Distrito</label><select id="r-dist"><option>— elige zona primero —</option></select><div class="dinfo" id="r-dinfo"></div></div>
             <div class="ff"><label>Cantidad</label><input type="number" id="r-cant" value="5" min="1"></div>
@@ -405,7 +405,7 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
     <div class="screen" id="s-config">
       <div class="ctabs">
         <button class="ctab on" onclick="cTab(this,'c-meta')">HC Meta</button>
-        <button class="ctab" onclick="cTab(this,'c-zonas')">Zonas</button>
+        <button class="ctab" onclick="cTab(this,'c-zonas')">Zonas por Operador</button>
         <button class="ctab" onclick="cTab(this,'c-operadores')">Operadores</button>
         <button class="ctab" onclick="cTab(this,'c-ciudades')">Ciudades</button>
         <button class="ctab" onclick="cTab(this,'c-tarifario')">Tarifario</button>
@@ -428,14 +428,34 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
       </div>
       <div class="csec" id="c-zonas">
         <div class="form-card">
-          <div class="add-row">
-            <div class="ff"><label>Nombre de zona</label><input type="text" id="zona-nombre" placeholder="Ej: LIMA NORTE 2"></div>
-            <div class="ff" style="flex:3"><label>Distritos (separados por coma)</label><input type="text" id="zona-dist" placeholder="Ej: Breña, Lince, Pueblo Libre"></div>
-            <button class="btn btn-primary btn-sm" onclick="agregarZona()">+ Agregar zona</button>
+          <p style="font-size:11px;color:var(--gris3);margin-bottom:10px">Cada operador maneja sus propias zonas, y cada zona agrupa distritos específicos. Configura las zonas según cómo opera cada operador en esta contrata.</p>
+          <div class="ff" style="max-width:280px;margin-bottom:4px">
+            <label>Selecciona el operador a configurar</label>
+            <select id="zop-operador" onchange="renderZonasOperador()"></select>
           </div>
         </div>
-        <div class="card"><table class="tbl"><thead><tr><th>Zona</th><th>Distritos</th><th></th></tr></thead>
-        <tbody id="tbody-zonas"></tbody></table></div>
+        <div class="form-card">
+          <div class="section-divider" style="margin-top:0">Agregar nueva zona para este operador</div>
+          <div class="fg2" style="margin-bottom:8px">
+            <div class="ff"><label>Nombre de la zona</label><input type="text" id="zop-zona-nombre" placeholder="Ej: LIMA ESTE"></div>
+          </div>
+          <div class="ff" style="margin-bottom:8px">
+            <label>Distritos de esta zona</label>
+            <div id="zop-distritos-check" style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--gris1);border-radius:var(--radius);padding:8px;background:var(--gris0)"></div>
+          </div>
+          <div class="ff" style="margin-bottom:8px">
+            <label>¿No encuentras el distrito? Agrégalo aquí (separados por coma)</label>
+            <input type="text" id="zop-nuevo-distrito" placeholder="Ej: Nuevo Distrito 1, Nuevo Distrito 2">
+          </div>
+          <div class="form-actions" style="border-top:none;padding-top:0">
+            <button class="btn btn-primary btn-sm" onclick="agregarZonaOperador()">+ Agregar zona al operador</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Zonas configuradas — <span id="zop-operador-lbl">—</span></div></div>
+          <table class="tbl"><thead><tr><th>Zona</th><th>Distritos</th><th></th></tr></thead>
+          <tbody id="tbody-zonas-operador"></tbody></table>
+        </div>
       </div>
       <div class="csec" id="c-operadores">
         <div class="form-card">
@@ -603,6 +623,34 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
         <div class="ff"><label>Chaleco (talla)</label><select id="reg-chaleco"><option>32</option><option>34</option><option>36</option><option>38</option></select></div>
         <div class="ff"><label>Botas (talla)</label><select id="reg-botas"><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option></select></div>
       </div>
+
+      <div class="section-divider">Origen del técnico</div>
+      <div class="fg">
+        <div class="ff">
+          <label>Origen</label>
+          <select id="reg-origen" onchange="toggleReferido()">
+            <option value="REQUERIMIENTO">Cubre un requerimiento</option>
+            <option value="REFERIDO">Referido por otro técnico</option>
+            <option value="DIRECTO">Postulación directa</option>
+          </select>
+        </div>
+        <div class="ff" id="reg-referido-wrap" style="display:none">
+          <label>Referido por (nombre del técnico)</label>
+          <input type="text" id="reg-referido" placeholder="Nombre completo del referente" style="text-transform:uppercase">
+        </div>
+      </div>
+
+      <div class="section-divider">Técnico de apoyo (T2) — opcional</div>
+      <div style="margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:400;cursor:pointer">
+          <input type="checkbox" id="reg-tiene-t2" onchange="toggleT2Fields()"> Esta cuadrilla cuenta con técnico de apoyo (T2)
+        </label>
+      </div>
+      <div class="fg" id="reg-t2-wrap" style="display:none">
+        <div class="ff"><label>Nombre completo T2</label><input type="text" id="reg-t2-nombre" placeholder="Nombre completo" style="text-transform:uppercase"></div>
+        <div class="ff"><label>DNI T2</label><input type="text" id="reg-t2-dni" placeholder="00000000" maxlength="12"></div>
+        <div class="ff"><label>Celular T2</label><input type="tel" id="reg-t2-cel" placeholder="9XXXXXXXX" maxlength="9"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="cerrarModal('modal-reg')">Cancelar</button>
@@ -613,55 +661,25 @@ body{font-family:var(--font);background:var(--gris0);color:var(--negro);font-siz
 
 <!-- MODAL CANDIDATO PT — entrevista + calculadora -->
 <div class="modal-bg" id="modal-cand">
-  <div class="modal" style="width:820px">
+  <div class="modal" style="width:520px">
     <div class="modal-header">
       <div class="modal-title" id="modal-cand-title">Candidato PeopleTec</div>
       <button class="btn btn-icon" onclick="cerrarModal('modal-cand')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <!-- Izquierda: datos + entrevista -->
-        <div>
-          <div class="section-divider">Datos del candidato</div>
-          <div id="cand-datos-body"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
-            <div class="section-divider" style="margin:0;flex:1">Entrevista por competencias</div>
-            <div id="entrev-prom-badge" style="display:none;margin-left:10px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600"></div>
-          </div>
-          <div id="competencias-body" style="margin-top:8px"></div>
-          <div class="ff" style="margin-top:10px"><label>Notas adicionales del reclutador</label><textarea id="entrev-notas" placeholder="Observaciones generales..." rows="3"></textarea></div>
-          <div id="entrev-guardada-hint" style="display:none;margin-top:6px;padding:6px 10px;background:var(--verdeclaro);border-radius:var(--radius);font-size:10px;color:var(--verde);font-weight:500">✅ Entrevista guardada</div>
-        </div>
-        <!-- Derecha: calculadora real -->
-        <div>
-          <div class="section-divider">Calculadora de ingresos</div>
-          <div class="fg2" style="margin-bottom:8px">
-            <div class="ff"><label>Operador</label><select id="calc-op" onchange="calcActualizarFiltros()"></select></div>
-            <div class="ff"><label>Contrata</label><select id="calc-contrata" onchange="calcActualizarFiltros()"></select></div>
-            <div class="ff"><label>Tipo</label><select id="calc-tipop" onchange="calcActualizarItems()"></select></div>
-            <div class="ff"><label>Servicio</label><select id="calc-serv-tipo" onchange="calcActualizarItems()"></select></div>
-          </div>
-          <div class="ff" style="margin-bottom:8px"><label>Item / Servicio específico</label><select id="calc-item" onchange="calcular()"></select></div>
-          <div class="fg2" style="margin-bottom:8px">
-            <div class="ff"><label>Días trabajados al mes</label><input type="number" id="calc-dias" value="26" min="1" max="31" oninput="calcular()"></div>
-            <div class="ff"><label>Servicios por día</label><input type="number" id="calc-cant" value="6" min="1" oninput="calcular()"></div>
-          </div>
-          <!-- Resultado principal -->
-          <div class="calc-result" style="margin-bottom:8px">
-            <div class="calc-result-lbl">Ingreso estimado mensual</div>
-            <div class="calc-result-val" id="calc-total">S/. 0.00</div>
-            <div class="calc-result-sub" id="calc-sub">—</div>
-          </div>
-          <!-- Desglose + bonos -->
-          <div style="background:var(--gris0);border-radius:var(--radius);padding:10px;font-size:11px" id="calc-desglose-box">
-            <div id="calc-desglose-content" style="color:var(--gris3)">Selecciona operador e item para calcular</div>
-          </div>
-          <div class="section-divider" style="margin-top:12px">Contactar candidato</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm" onclick="contactarWA()" style="background:#25D366;color:#fff;border-color:#25D366"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
-            <button class="btn btn-sm" onclick="contactarEmail()"><i class="ti ti-mail"></i> Enviar por email</button>
-          </div>
-        </div>
+      <div class="section-divider">Datos del candidato</div>
+      <div id="cand-datos-body"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+        <div class="section-divider" style="margin:0;flex:1">Entrevista por competencias</div>
+        <div id="entrev-prom-badge" style="display:none;margin-left:10px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600"></div>
+      </div>
+      <div id="competencias-body" style="margin-top:8px"></div>
+      <div class="ff" style="margin-top:10px"><label>Notas adicionales del reclutador</label><textarea id="entrev-notas" placeholder="Observaciones generales..." rows="3"></textarea></div>
+      <div id="entrev-guardada-hint" style="display:none;margin-top:6px;padding:6px 10px;background:var(--verdeclaro);border-radius:var(--radius);font-size:10px;color:var(--verde);font-weight:500">✅ Entrevista guardada</div>
+      <div class="section-divider" style="margin-top:14px">Contactar candidato</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="contactarWA()" style="background:#25D366;color:#fff;border-color:#25D366"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+        <button class="btn btn-sm" onclick="contactarEmail()"><i class="ti ti-mail"></i> Enviar por email</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -744,13 +762,41 @@ const CONTRATA  = 'HOME';
 // DATOS LOCALES
 // ============================================================
 let DATA = { homeq:[], backlog:[], asistencia:[], requerimiento:[], metas:[] };
-let ZONAS = {
-  'LIMA NORTE':['Ancón','Carabayllo','Comas','Independencia','Los Olivos','Puente Piedra','San Martín de Porres','Santa Rosa'],
-  'LIMA SUR':['Chorrillos','Lurín','Pachacámac','Pucusana','Punta Hermosa','San Bartolo','San Juan de Miraflores','Santiago de Surco','Villa El Salvador','Villa María del Triunfo'],
-  'LIMA ESTE':['Ate','Chaclacayo','El Agustino','La Molina','Lurigancho-Chosica','San Juan de Lurigancho','Santa Anita'],
-  'LIMA CENTRO':['Barranco','Breña','Cercado de Lima','Jesús María','La Victoria','Lince','Miraflores','Pueblo Libre','San Isidro','San Miguel','Surquillo'],
-  'AREQUIPA':['Cayma','Yanahuara'],'CUSCO':['Cusco'],'PASCO':['Yanacancha'],
-  'PIURA':['Piura'],'PUCALLPA':['Callería','Manatay','Yarinacocha'],'TACNA':['Tacna'],'TRUJILLO':['Huanchaco']
+// Pool maestro de distritos disponibles (para armar zonas por operador)
+let DISTRITOS_POOL = [
+  'Ancón','Carabayllo','Comas','Independencia','Los Olivos','Puente Piedra','San Martín de Porres','Santa Rosa',
+  'Chorrillos','Lurín','Pachacámac','Pucusana','Punta Hermosa','San Bartolo','San Juan de Miraflores','Santiago de Surco','Villa El Salvador','Villa María del Triunfo',
+  'Ate','Chaclacayo','El Agustino','La Molina','Lurigancho-Chosica','San Juan de Lurigancho','Santa Anita',
+  'Barranco','Breña','Cercado de Lima','Jesús María','La Victoria','Lince','Miraflores','Pueblo Libre','San Isidro','San Miguel','Surquillo',
+  'Cayma','Yanahuara','Cusco','Yanacancha','Piura','Callería','Manatay','Yarinacocha','Tacna','Huanchaco'
+];
+
+// Zonas configuradas POR OPERADOR: { OPERADOR: { ZONA: [distritos] } }
+let ZONAS_OP = {
+  'ENTEL': {
+    'LIMA NORTE':['Ancón','Carabayllo','Comas','Independencia','Los Olivos','Puente Piedra','San Martín de Porres','Santa Rosa'],
+    'LIMA SUR':['Chorrillos','Lurín','Pachacámac','San Juan de Miraflores','Santiago de Surco','Villa El Salvador','Villa María del Triunfo'],
+    'LIMA ESTE':['Ate','Chaclacayo','Lurigancho-Chosica','San Juan de Lurigancho','Santa Anita'],
+    'LIMA CENTRO':['Barranco','Breña','Cercado de Lima','Jesús María','La Victoria','Lince','Miraflores','Pueblo Libre','San Isidro','San Miguel','Surquillo']
+  },
+  'WIN': {
+    'LIMA NORTE':['Carabayllo','Comas','Independencia','Los Olivos','Puente Piedra','San Martín de Porres'],
+    'LIMA ESTE':['Ate','Chaclacayo','San Juan de Lurigancho','Santa Anita']
+  },
+  'CLARO': {
+    'LIMA NORTE':['Ancón','Carabayllo','Comas','Independencia','Los Olivos','Puente Piedra','San Martín de Porres','Santa Rosa'],
+    'LIMA SUR':['Chorrillos','Lurín','San Juan de Miraflores','Santiago de Surco','Villa El Salvador','Villa María del Triunfo'],
+    'LIMA ESTE':['Ate','Chaclacayo','El Agustino','La Molina','Lurigancho-Chosica','San Juan de Lurigancho','Santa Anita'],
+    'LIMA CENTRO':['Barranco','Breña','Cercado de Lima','Jesús María','La Victoria','Lince','Miraflores','Pueblo Libre','San Isidro','San Miguel','Surquillo']
+  },
+  'MOVISTAR': {
+    'LIMA NORTE':['Carabayllo','Comas','Los Olivos','Puente Piedra','San Martín de Porres'],
+    'LIMA SUR':['Chorrillos','San Juan de Miraflores','Villa El Salvador'],
+    'LIMA ESTE':['Ate','San Juan de Lurigancho']
+  },
+  'WOW': {
+    'LIMA ESTE':['Ate','Chaclacayo']
+  }
 };
 
 // Entrevistas guardadas en sesión
@@ -840,7 +886,10 @@ async function cargarHOMEQ(){
     tipoTec:r[22]||'', brevete:r[24]||'',
     movilidad:r[25]||'', placa:r[27]||'',
     polo:r[28]||'', panta:r[29]||'', chaleco:r[30]||'', botas:r[31]||'',
-    contrata:r[32]||'', operador:r[33]||'', base:r[34]||'', pedido:r[36]||''
+    contrata:r[32]||'', operador:r[33]||'', base:r[34]||'', pedido:r[36]||'',
+    origen:r[37]||'', referidoPor:r[38]||'',
+    scoreEfec:r[39]||'', scoreProd:r[40]||'',
+    t2Nombre:r[41]||'', t2Dni:r[42]||'', t2Cel:r[43]||''
   }));
 }
 
@@ -970,6 +1019,10 @@ function renderCuadrillas(){
 function verCuadrilla(numDoc){
   const q=DATA.homeq.find(x=>x.numDoc===numDoc); if(!q) return;
   document.getElementById('modal-cuad-title').textContent=q.completo;
+
+  const origenLbl = {REQUERIMIENTO:'Cubre requerimiento', REFERIDO:'Referido', DIRECTO:'Postulación directa'}[q.origen] || q.origen || '—';
+  const tieneT2 = q.t2Nombre || q.t2Dni;
+
   document.getElementById('modal-cuad-body').innerHTML=`
     <div class="fg" style="margin-bottom:12px">
       <div><div class="section-divider">Datos personales</div>
@@ -989,13 +1042,64 @@ function verCuadrilla(numDoc){
       </table></div>
     </div>
     <div class="section-divider">Uniformes</div>
-    <div style="display:flex;gap:12px;font-size:11px">
+    <div style="display:flex;gap:12px;font-size:11px;margin-bottom:14px">
       <span><strong>Polo:</strong> ${q.polo}</span>
       <span><strong>Pantalón:</strong> ${q.panta}</span>
       <span><strong>Chaleco:</strong> ${q.chaleco}</span>
       <span><strong>Botas:</strong> ${q.botas}</span>
-    </div>`;
+    </div>
+
+    <div class="section-divider">Origen y referidos</div>
+    <table style="font-size:11px;width:100%;border-collapse:collapse;margin-bottom:14px">
+      ${fila('Origen', origenLbl)}
+      ${q.origen==='REFERIDO' ? fila('Referido por', q.referidoPor||'—') : ''}
+    </table>
+
+    <div class="section-divider">Técnico de apoyo (T2)</div>
+    ${tieneT2 ? `
+      <table style="font-size:11px;width:100%;border-collapse:collapse;margin-bottom:14px">
+        ${fila('Nombre T2', q.t2Nombre||'—')}
+        ${fila('DNI T2', q.t2Dni||'—')}
+        ${fila('Celular T2', q.t2Cel||'—')}
+      </table>
+    ` : `<p style="font-size:11px;color:var(--gris3);margin-bottom:14px">Esta cuadrilla no cuenta con técnico de apoyo registrado.</p>`}
+
+    <div class="section-divider">Desempeño</div>
+    <div class="fg2" style="margin-bottom:10px">
+      <div class="ff">
+        <label>Efectividad (1-5)</label>
+        <select id="perf-efec">
+          <option value="">— Sin calificar —</option>
+          ${[1,2,3,4,5].map(n=>`<option value="${n}" ${String(q.scoreEfec)===String(n)?'selected':''}>${n} ${'★'.repeat(n)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ff">
+        <label>Producción (1-5)</label>
+        <select id="perf-prod">
+          <option value="">— Sin calificar —</option>
+          ${[1,2,3,4,5].map(n=>`<option value="${n}" ${String(q.scoreProd)===String(n)?'selected':''}>${n} ${'★'.repeat(n)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm" onclick="guardarDesempeno('${q.numDoc}')"><i class="ti ti-device-floppy"></i> Guardar desempeño</button>
+    </div>
+  `;
   abrirModal('modal-cuad');
+}
+
+async function guardarDesempeno(numDoc){
+  const efec = document.getElementById('perf-efec').value;
+  const prod = document.getElementById('perf-prod').value;
+  showToast('Guardando desempeño...');
+  try {
+    const res = await wPost({accion:'actualizar_homeq_extra', contrata:CONTRATA, numDoc, campos:{scoreEfec:efec, scoreProd:prod}});
+    if(res && res.ok){
+      showToast('✅ Desempeño actualizado');
+      await cargarHOMEQ();
+      renderCuadrillas();
+    } else showToast('⚠ Error: '+(res?.error||''));
+  } catch(e){ showToast('⚠ Error: '+e.message); }
 }
 function fila(lbl,val){ return `<tr><td style="padding:4px 6px;font-weight:600;color:var(--gris3);width:120px">${lbl}</td><td style="padding:4px 6px">${val||'—'}</td></tr>`; }
 
@@ -1007,6 +1111,15 @@ function abrirRegistroTecnico(){
   const sel=document.getElementById('reg-op');
   sel.innerHTML=OPERADORES.map(o=>`<option>${o}</option>`).join('');
   abrirModal('modal-reg');
+}
+
+function toggleReferido(){
+  const show = document.getElementById('reg-origen').value==='REFERIDO';
+  document.getElementById('reg-referido-wrap').style.display = show ? 'block' : 'none';
+}
+function toggleT2Fields(){
+  const show = document.getElementById('reg-tiene-t2').checked;
+  document.getElementById('reg-t2-wrap').style.display = show ? 'grid' : 'none';
 }
 
 async function guardarTecnico(){
@@ -1041,7 +1154,13 @@ async function guardarTecnico(){
     document.getElementById('reg-op').value,
     document.getElementById('reg-base').value,
     '',
-    document.getElementById('reg-pedido').value
+    document.getElementById('reg-pedido').value,
+    document.getElementById('reg-origen').value,
+    document.getElementById('reg-origen').value==='REFERIDO' ? document.getElementById('reg-referido').value.trim().toUpperCase() : '',
+    '', '',
+    document.getElementById('reg-tiene-t2').checked ? document.getElementById('reg-t2-nombre').value.trim().toUpperCase() : '',
+    document.getElementById('reg-tiene-t2').checked ? document.getElementById('reg-t2-dni').value.trim() : '',
+    document.getElementById('reg-tiene-t2').checked ? document.getElementById('reg-t2-cel').value.trim() : ''
   ];
   showToast('Guardando técnico...');
   try {
@@ -1174,11 +1293,25 @@ async function cerrarReq(cod){
   else showToast('⚠ Error: '+(res.error||''));
 }
 
+function updZonasReq(){
+  const op=document.getElementById('r-op').value;
+  const zonaSel=document.getElementById('r-zona');
+  const zonas = ZONAS_OP[op] || {};
+  const zonaNames = Object.keys(zonas);
+  zonaSel.innerHTML = zonaNames.length
+    ? '<option value="">— seleccionar —</option>' + zonaNames.map(z=>`<option>${z}</option>`).join('')
+    : '<option value="">Sin zonas configuradas para '+op+'</option>';
+  updDist();
+}
+
 function updDist(){
+  const op=document.getElementById('r-op').value;
   const z=document.getElementById('r-zona').value, sel=document.getElementById('r-dist'), info=document.getElementById('r-dinfo');
-  sel.innerHTML=''; if(!z||!ZONAS[z]){sel.innerHTML='<option>— elige zona primero —</option>';info.textContent='';return;}
-  ZONAS[z].forEach(d=>{ const o=document.createElement('option'); o.textContent=d; sel.appendChild(o); });
-  info.textContent=ZONAS[z].join(', ');
+  sel.innerHTML='';
+  const zonas = ZONAS_OP[op] || {};
+  if(!z||!zonas[z]){sel.innerHTML='<option>— elige zona primero —</option>';info.textContent='';return;}
+  zonas[z].forEach(d=>{ const o=document.createElement('option'); o.textContent=d; sel.appendChild(o); });
+  info.textContent=zonas[z].join(', ');
 }
 
 // ============================================================
@@ -1236,8 +1369,6 @@ function abrirCandidato(numDoc){
       </div>
       <input type="text" placeholder="Observación..." style="font-size:11px;padding:4px 7px;border:1px solid var(--gris2);border-radius:var(--radius);width:100%;font-family:var(--font)" id="obs-${i}">
     </div>`).join('');
-  // Calculadora real con PRECIARIO
-  calcInicializar();
   // Cargar entrevista guardada si existe
   setTimeout(()=>cargarEntrevistaGuardada(q.numDoc), 50);
   abrirModal('modal-cand');
@@ -1547,24 +1678,78 @@ const BONOS_DATA = [
 // ============================================================
 // CONFIG
 // ============================================================
-function renderZonas(){ document.getElementById('tbody-zonas').innerHTML=Object.entries(ZONAS).map(([z,ds])=>`<tr><td style="font-weight:500">${z}</td><td style="font-size:10px;color:var(--gris3)">${ds.join(', ')}</td><td><button class="btn btn-sm" onclick="editarZona('${z}')">Editar</button></td></tr>`).join(''); }
+// ── ZONAS POR OPERADOR ──────────────────────────────────────
+function renderZonasOperador(){
+  const op = document.getElementById('zop-operador').value;
+  document.getElementById('zop-operador-lbl').textContent = op;
+
+  // Render checkboxes de distritos disponibles
+  const checkBox = document.getElementById('zop-distritos-check');
+  checkBox.innerHTML = DISTRITOS_POOL.map((d,i)=>
+    `<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:400;cursor:pointer;background:var(--blanco);padding:3px 7px;border-radius:4px;border:1px solid var(--gris2)">
+      <input type="checkbox" value="${d}" class="zop-dist-chk"> ${d}
+    </label>`
+  ).join('');
+
+  // Render tabla de zonas configuradas para este operador
+  const zonas = ZONAS_OP[op] || {};
+  const tbody = document.getElementById('tbody-zonas-operador');
+  const entries = Object.entries(zonas);
+  tbody.innerHTML = entries.length
+    ? entries.map(([z,ds])=>`<tr>
+        <td style="font-weight:500">${z}</td>
+        <td style="font-size:10px;color:var(--gris3)">${ds.join(', ')}</td>
+        <td><button class="btn btn-sm" onclick="eliminarZonaOperador('${op}','${z}')"><i class="ti ti-trash"></i></button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="3" class="empty">Sin zonas configuradas para ${op}</td></tr>`;
+}
+
+function agregarZonaOperador(){
+  const op = document.getElementById('zop-operador').value;
+  const nombre = document.getElementById('zop-zona-nombre').value.trim().toUpperCase();
+  if(!nombre){ showToast('⚠ Ingresa el nombre de la zona'); return; }
+
+  // Distritos nuevos escritos a mano
+  const nuevosTxt = document.getElementById('zop-nuevo-distrito').value.trim();
+  const nuevos = nuevosTxt ? nuevosTxt.split(',').map(d=>d.trim()).filter(Boolean) : [];
+  nuevos.forEach(d=>{ if(!DISTRITOS_POOL.includes(d)) DISTRITOS_POOL.push(d); });
+
+  // Distritos seleccionados con checkbox
+  const checked = [...document.querySelectorAll('.zop-dist-chk:checked')].map(c=>c.value);
+  const distritos = [...new Set([...checked, ...nuevos])];
+
+  if(!distritos.length){ showToast('⚠ Selecciona o agrega al menos un distrito'); return; }
+
+  if(!ZONAS_OP[op]) ZONAS_OP[op] = {};
+  ZONAS_OP[op][nombre] = distritos;
+
+  document.getElementById('zop-zona-nombre').value='';
+  document.getElementById('zop-nuevo-distrito').value='';
+  renderZonasOperador();
+  updZonasReq();
+  showToast(`✅ Zona "${nombre}" agregada para ${op}`);
+}
+
+function eliminarZonaOperador(op, zona){
+  if(!confirm(`¿Eliminar la zona "${zona}" de ${op}?`)) return;
+  if(ZONAS_OP[op]) delete ZONAS_OP[op][zona];
+  renderZonasOperador();
+  updZonasReq();
+  showToast('Zona eliminada');
+}
 function renderOperadores(){ document.getElementById('tbody-operadores').innerHTML=OPERADORES.map(o=>`<tr><td style="font-weight:500">${o}</td><td style="font-family:var(--mono)">${o.slice(0,3)}</td><td><span class="pill p-act">Activo</span></td><td><button class="btn btn-sm">Editar</button></td></tr>`).join(''); }
 function renderCiudades(){ document.getElementById('tbody-ciudades').innerHTML=CIUDADES.map(c=>`<tr><td>${c.ciudad}</td><td>${c.pais}</td><td><button class="btn btn-sm" onclick="editarCiudad('${c.ciudad}')">Editar</button></td></tr>`).join(''); }
 function renderTarifas(){ document.getElementById('tbody-tarifas').innerHTML=TARIFARIO.map(t=>`<tr><td>${t.op}</td><td>${t.tipo}</td><td style="font-family:var(--mono)">S/. ${t.tarifa.toFixed(2)}</td><td>${t.unidad}</td><td><button class="btn btn-sm">Editar</button></td></tr>`).join(''); }
 function renderMetas(){ document.getElementById('tbody-metas').innerHTML=METAS_LOCAL.length?METAS_LOCAL.map(m=>`<tr><td>${fmtDate(m.fecha)}</td><td style="font-family:var(--mono);font-weight:600;color:var(--verde)">${m.val}</td><td>${m.nota}</td><td><button class="btn btn-sm" onclick="eliminarMeta('${m.fecha}')">Eliminar</button></td></tr>`).join(''):`<tr><td colspan="4" class="empty">Sin metas configuradas</td></tr>`; }
 function poblarSelectsOp(){
   ['r-op','tar-op','reg-op'].forEach(id=>{ const s=document.getElementById(id); if(s) s.innerHTML=OPERADORES.map(o=>`<option>${o}</option>`).join(''); });
-  const rzona=document.getElementById('r-zona'); if(rzona){ rzona.innerHTML='<option value="">— seleccionar —</option>'+Object.keys(ZONAS).map(z=>`<option>${z}</option>`).join(''); }
+  // Poblar select de operador en config de zonas
+  const zopSel=document.getElementById('zop-operador');
+  if(zopSel) zopSel.innerHTML=OPERADORES.map(o=>`<option>${o}</option>`).join('');
+  // Inicializar zonas del primer operador en Requerimiento
+  updZonasReq();
 }
 
-function agregarZona(){
-  const nom=document.getElementById('zona-nombre').value.trim().toUpperCase(), dist=document.getElementById('zona-dist').value.trim();
-  if(!nom||!dist){ showToast('⚠ Completa nombre y distritos'); return; }
-  ZONAS[nom]=dist.split(',').map(d=>d.trim());
-  document.getElementById('zona-nombre').value=''; document.getElementById('zona-dist').value='';
-  renderZonas(); poblarSelectsOp(); showToast('✅ Zona agregada');
-}
-function editarZona(zona){ document.getElementById('zona-nombre').value=zona; document.getElementById('zona-dist').value=(ZONAS[zona]||[]).join(', '); showToast('Edita y presiona + Agregar zona para actualizar'); }
 function agregarOperador(){
   const nom=document.getElementById('op-nom').value.trim().toUpperCase(); if(!nom){ showToast('⚠ Ingresa el operador'); return; }
   if(!OPERADORES.includes(nom)) OPERADORES.push(nom);
@@ -1769,7 +1954,7 @@ document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>
 // ============================================================
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('asist-fecha').value=today();
-  poblarSelectsOp(); renderZonas(); renderOperadores(); renderCiudades(); renderTarifas(); renderMetas();
+  poblarSelectsOp(); renderOperadores(); renderCiudades(); renderTarifas(); renderMetas(); renderZonasOperador();
   recargarTodo();
 });
 
@@ -1785,12 +1970,16 @@ const PLANTILLAS = {
               'NOMBRES','AP.PATERNO','AP.MATERNO','COMPLETO','CELULAR','CORREO','F.NAC','EDAD',
               'PAIS','CIUDAD','DISTRITO','DIRECCION','EST.CIVIL','NUM.HIJOS','TIPO TEC',
               'VERIF.DIR','BREVETE','TIPO MOVILIDAD','AÑO MOV','PLACA','POLO','PANTA',
-              'CHALECO','BOTAS','CONTRATA','OPERADOR','BASE','COD.CUADRILLA','PEDIDO/REQ'],
+              'CHALECO','BOTAS','CONTRATA','OPERADOR','BASE','COD.CUADRILLA','PEDIDO/REQ',
+              'ORIGEN','REFERIDO POR','SCORE EFECTIVIDAD','SCORE PRODUCCION',
+              'T2 NOMBRE','T2 DNI','T2 CELULAR'],
     ejemplo: ['ACTIVO','2026-06-01','202606','','','DNI','12345678','DNI12345678',
               'JUAN','PEREZ','GARCIA','JUAN PEREZ GARCIA','987654321','juan@gmail.com',
               '1990-01-15','34','PERU','LIMA','LIMA NORTE','Av. Principal 123',
               'SOLTERO','0','T1','SI','SI','AUTO','2020','ABC-123','M','32','32','40',
-              'HOME','ENTEL','LIMA NORTE','','REQ-001']
+              'HOME','ENTEL','LIMA NORTE','','REQ-001',
+              'REQUERIMIENTO','','4','5',
+              'CARLOS LOPEZ RUIZ','87654321','912345678']
   },
   BACKLOG: {
     nombre: 'Plantilla_Backlog',
@@ -1820,7 +2009,7 @@ function csvEscape(v){
 }
 function toCSV(rows){
   return rows.map(function(r){
-    return r.map(csvEscape).join(',');
+    return r.map(csvEscape).join(';');
   }).join('\n');
 }
 function downloadCSV(csv, filename){
@@ -1842,6 +2031,34 @@ function descargarPlantilla(hoja) {
   var csv = toCSV(rows);
   downloadCSV(csv, p.nombre + '.csv');
   showToast('Plantilla descargada');
+}
+
+function abrirPlantillaAsistencia(){
+  document.getElementById('ap-fecha-ini').value = today();
+  document.getElementById('ap-fecha-fin').value = '';
+  const ops = [...new Set(DATA.homeq.filter(q=>(q.status||'').trim().toUpperCase()==='ACTIVO').map(q=>q.operador).filter(Boolean))];
+  const sel = document.getElementById('ap-op');
+  sel.innerHTML = '<option value="">Todos los operadores</option>' + ops.map(o=>`<option>${o}</option>`).join('');
+  sel.onchange = actualizarConteoPlantilla;
+  document.getElementById('ap-fecha-ini').onchange = actualizarConteoPlantilla;
+  document.getElementById('ap-fecha-fin').onchange = actualizarConteoPlantilla;
+  actualizarConteoPlantilla();
+  abrirModal('modal-asist-plantilla');
+}
+
+function actualizarConteoPlantilla(){
+  const op = document.getElementById('ap-op').value;
+  let activos = DATA.homeq.filter(q=>(q.status||'').trim().toUpperCase()==='ACTIVO');
+  if(op) activos = activos.filter(q => q.operador === op);
+  document.getElementById('ap-count').textContent = `Cuadrillas activas: ${activos.length}`;
+  const fechaIni = document.getElementById('ap-fecha-ini').value;
+  const fechaFin = document.getElementById('ap-fecha-fin').value;
+  let info = `Plantilla para ${activos.length} cuadrillas`;
+  if(fechaFin && fechaFin !== fechaIni){
+    const dias = Math.round((new Date(fechaFin) - new Date(fechaIni)) / 86400000) + 1;
+    info += ` × ${dias} días = ${activos.length * dias} filas`;
+  }
+  document.getElementById('ap-preview-info').textContent = info;
 }
 
 function generarPlantillaAsistencia(){
@@ -1920,7 +2137,7 @@ function parsearCSV(text, filename) {
     var result = [], cur = '', inQ = false;
     for (var i = 0; i < line.length; i++) {
       if (line[i] === '"') { inQ = !inQ; }
-      else if (line[i] === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else if (line[i] === ';' && !inQ) { result.push(cur.trim()); cur = ''; }
       else { cur += line[i]; }
     }
     result.push(cur.trim());
